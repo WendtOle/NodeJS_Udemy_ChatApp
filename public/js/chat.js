@@ -4,9 +4,29 @@ const socket = io()
 const $messageForm = document.querySelector('#message-form')
 const $messageFormInput = $messageForm.querySelector('input')
 const $messageFormButton = $messageForm.querySelector('button')
+const $locationButton = document.querySelector('#send-location')
+const $messages = document.querySelector('#messages')
+
+// Templates
+const messageTemplate = document.querySelector('#message-template').innerHTML
+const locationURLTemplate = document.querySelector('#location-message-template').innerHTML
 
 socket.on('message', (message) => {
     console.log(message)
+    const html = Mustache.render(messageTemplate, {
+        message: message.text,
+        createdAt: moment(message.createdAt).format('HH:mm')
+    })
+    $messages.insertAdjacentHTML('beforeend', html)
+})
+
+socket.on('locationMessage', (locationMessage) => {
+    console.log(locationMessage.locationURL)
+    const html = Mustache.render(locationURLTemplate, {
+        locationURL: locationMessage.locationURL,
+        createdAt: moment(locationMessage.createdAt).format('HH:mm')
+    })
+    $messages.insertAdjacentHTML('beforeend', html)
 })
 
 $messageForm.addEventListener('submit',(e) => {
@@ -15,7 +35,7 @@ $messageForm.addEventListener('submit',(e) => {
     const message = e.target.elements.message.value
 
     socket.emit('sendMessage', message, (error) => {
-        
+
         $messageFormButton.removeAttribute('disabled')
         $messageFormInput.value = ''
         $messageFormInput.focus()
@@ -27,12 +47,15 @@ $messageForm.addEventListener('submit',(e) => {
     })
 })
 
-document.querySelector('#send-location').addEventListener('click', () => {
+$locationButton.addEventListener('click', () => {
     if (!navigator.geolocation)
         return alert('Geolocation is not supported by your browser')
 
+    $locationButton.setAttribute('disabled','disabled')
+
     navigator.geolocation.getCurrentPosition(({coords}) => {
         socket.emit('sendLocation', {lat: coords.latitude, long: coords.longitude}, () => {
+            $locationButton.removeAttribute('disabled')
             console.log('Location shared!')
         })
     })
